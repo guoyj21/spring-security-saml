@@ -184,5 +184,11 @@
       <version>1.0</version>
       <scope>test</scope>
     </dependency>
+      <dependency>
+          <artifactId>xml-apis</artifactId>
+          <groupId>xml-apis</groupId>
+          <version>1.4.01</version>
+          <scope>test</scope>
+      </dependency>
   </dependencies>
 </project>
