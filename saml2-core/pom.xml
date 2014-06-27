@@ -190,5 +190,11 @@
           <version>1.4.01</version>
           <scope>test</scope>
       </dependency>
+      <dependency>
+          <artifactId>serializer</artifactId>
+          <groupId>xalan</groupId>
+          <version>2.7.1</version>
+          <scope>test</scope>
+      </dependency>
   </dependencies>
 </project>
