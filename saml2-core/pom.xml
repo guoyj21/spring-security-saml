@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.springframework.security.extensions</groupId>
   <artifactId>spring-security-saml2-core</artifactId>
-  <version>1.0.0.RC2-jive2</version>
+  <version>1.0.0.RC2-jive3</version>
   <name>Spring Security SAML v2 library</name>
   <description>Spring Security SAML v2 library</description>
   <url>https://github.com/SpringSource/spring-security-saml</url>
@@ -56,8 +56,8 @@
   </scm>
 
   <properties>
-      <org.springframework.version>3.2.6.RELEASE</org.springframework.version>
-      <org.springframework.security.version>3.2.0.RELEASE</org.springframework.security.version>
+      <org.springframework.version>3.2.9.RELEASE</org.springframework.version>
+      <org.springframework.security.version>3.2.9.RELEASE</org.springframework.security.version>
   </properties>
 
   <build>
