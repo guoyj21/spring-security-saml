@@ -24,7 +24,7 @@ import org.opensaml.saml2.core.NameID;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.authority.GrantedAuthorityImpl;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.providers.ExpiringUsernameAuthenticationToken;
 import org.springframework.security.saml.context.SAMLMessageContext;
@@ -124,7 +124,7 @@ public class SAMLAuthenticationProviderTest {
 
         expect(consumer.processAuthenticationResponse(context)).andReturn(result);
         expect(assertion.getAuthnStatements()).andReturn(new LinkedList<AuthnStatement>());
-        User user = new User("test", "test", true, true, true, true, Arrays.asList(new SimpleGrantedAuthority("role1"), new SimpleGrantedAuthority("role2")));
+        User user = new User("test", "test", true, true, true, true, Arrays.asList(new GrantedAuthorityImpl("role1"), new GrantedAuthorityImpl("role2")));
         expect(details.loadUserBySAML(result)).andReturn(user);
 
         provider.setForcePrincipalAsString(false);
@@ -136,8 +136,8 @@ public class SAMLAuthenticationProviderTest {
         assertEquals(user.getUsername(), authentication.getName());
         assertNotNull(authentication.getDetails());
         assertEquals(2, authentication.getAuthorities().size());
-        assertTrue(authentication.getAuthorities().contains(new SimpleGrantedAuthority("role1")));
-        assertTrue(authentication.getAuthorities().contains(new SimpleGrantedAuthority("role2")));
+        assertTrue(authentication.getAuthorities().contains(new GrantedAuthorityImpl("role1")));
+        assertTrue(authentication.getAuthorities().contains(new GrantedAuthorityImpl("role2")));
         verify(details);
         verifyMock();
     }

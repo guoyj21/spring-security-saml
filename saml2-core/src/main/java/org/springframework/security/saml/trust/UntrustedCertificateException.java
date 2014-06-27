@@ -1,121 +1,145 @@
-/*
- * Copyright 2012 Vladimir Schaefer
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-package org.springframework.security.saml.trust;
+<?xml version="1.0" encoding="UTF-8" ?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:security="http://www.springframework.org/schema/security"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+              http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security-3.0.xsd
+              http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+              http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
 
-import org.springframework.security.crypto.codec.Base64;
-import org.springframework.security.crypto.codec.Hex;
+    <!-- Enable autowiring -->
+    <context:component-scan base-package="org.springframework.security.saml"/>
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateEncodingException;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
+    <!-- Initialization of OpenSAML library-->
+    <bean id="bootstrap" class="org.opensaml.DefaultBootstrap" init-method="bootstrap" lazy-init="false"/>
 
-/**
- * Exception indicates that verification failed due to the provided chain not being trusted.
- */
-public class UntrustedCertificateException extends CertificateException {
+    <!-- Central storage of cryptographic keys -->
+    <bean id="keyManager" class="org.springframework.security.saml.key.JKSKeyManager">
+        <constructor-arg value="classpath:org/springframework/security/saml/key/keystore.jks"/>
+        <constructor-arg type="java.lang.String" value="nalle123"/>
+        <constructor-arg>
+            <map>
+                <entry key="apollo" value="nalle123"/>
+            </map>
+        </constructor-arg>
+        <constructor-arg type="java.lang.String" value="apollo"/>
+    </bean>
 
-    /**
-     * Untrusted chain.
-     */
-    private X509Certificate[] x509Certificates;
+    <!-- IDP Metadata configuration - paths to metadata of IDPs in circle of trust is here -->
+    <!-- Do no forget to call iniitalize method on providers -->
+    <bean id="metadata" class="org.springframework.security.saml.metadata.MetadataManager" depends-on="bootstrap">
+        <constructor-arg index="0">
+            <list>
+                <bean class="org.opensaml.saml2.metadata.provider.FilesystemMetadataProvider">
+                    <constructor-arg index="0">
+                        <value type="java.io.File">classpath:testIDP.xml</value>
+                    </constructor-arg>
+                    <property name="parserPool" ref="parserPool"/>
+                </bean>
+                <bean class="org.opensaml.saml2.metadata.provider.FilesystemMetadataProvider">
+                    <constructor-arg index="0">
+                        <value type="java.io.File">classpath:testSP.xml</value>
+                    </constructor-arg>
+                    <property name="parserPool" ref="parserPool"/>
+                </bean>
+                <bean class="org.opensaml.saml2.metadata.provider.FilesystemMetadataProvider">
+                    <constructor-arg index="0">
+                        <value type="java.io.File">classpath:testSPMissingDescriptor.xml</value>
+                    </constructor-arg>
+                    <property name="parserPool" ref="parserPool"/>
+                </bean>
+                <bean class="org.opensaml.saml2.metadata.provider.FilesystemMetadataProvider">
+                    <constructor-arg index="0">
+                        <value type="java.io.File">classpath:testIDPNoSigning.xml</value>
+                    </constructor-arg>
+                    <property name="parserPool" ref="parserPool"/>
+                </bean>
+                <bean class="org.opensaml.saml2.metadata.provider.FilesystemMetadataProvider">
+                    <constructor-arg index="0">
+                        <value type="java.io.File">classpath:testIDPNoSSOBinding.xml</value>
+                    </constructor-arg>
+                    <property name="parserPool" ref="parserPool"/>
+                </bean>
+            </list>
+        </constructor-arg>
+        <property name="hostedSPName" value="http://localhost:8081/spring-security-saml2-webapp"/>
+        <!-- OPTIONAL property: can tell the system which IDP should be used for authenticating user by default. -->
+        <property name="defaultIDP" value="http://localhost:8080/opensso"/>
+    </bean>
 
-    public UntrustedCertificateException(String msg, X509Certificate[] x509Certificates) {
-        super(msg);
-        this.x509Certificates = x509Certificates;
-    }
+    <!-- XML parser pool needed for OpenSAML parsing -->
+    <bean id="parserPool" class="org.opensaml.xml.parse.BasicParserPool" scope="singleton"/>
 
-    /**
-     * @return certificates which could not be verified as trusted
-     */
-    public X509Certificate[] getX509Certificates() {
-        return x509Certificates;
-    }
+    <!-- Bindings, encoders and decoders used for creating and parsing messages -->
+    <util:list id="bindings">
+        <bean class="org.springframework.security.saml.processor.HTTPPostBinding">
+            <constructor-arg ref="parserPool"/>
+            <constructor-arg>
+                <bean class="org.opensaml.saml2.binding.decoding.HTTPPostDecoder">
+                    <constructor-arg ref="parserPool"/>
+                </bean>
+            </constructor-arg>
+            <constructor-arg>
+                <bean class="org.opensaml.saml2.binding.encoding.HTTPPostEncoder">
+                    <constructor-arg ref="velocityEngine"/>
+                    <constructor-arg value="/templates/saml2-post-binding.vm"/>
+                </bean>
+            </constructor-arg>
+        </bean>
+        <bean class="org.springframework.security.saml.processor.HTTPRedirectDeflateBinding">
+            <constructor-arg>
+                <bean class="org.opensaml.saml2.binding.decoding.HTTPRedirectDeflateDecoder">
+                    <constructor-arg ref="parserPool"/>
+                </bean>
+            </constructor-arg>
+            <constructor-arg>
+                <bean class="org.opensaml.saml2.binding.encoding.HTTPRedirectDeflateEncoder"/>
+            </constructor-arg>
+        </bean>
+        <bean class="org.springframework.security.saml.processor.HTTPSOAP11Binding">
+            <constructor-arg>
+                <bean class="org.opensaml.saml2.binding.decoding.HTTPSOAP11DecoderImpl">
+                    <constructor-arg ref="parserPool"/>
+                </bean>
+            </constructor-arg>
+            <constructor-arg>
+                <bean class="org.opensaml.saml2.binding.encoding.HTTPSOAP11Encoder"/>
+            </constructor-arg>
+        </bean>
+    </util:list>
 
-    @Override
-    public String getMessage() {
-        StringBuilder sb = new StringBuilder(150);
-        sb.append(super.getMessage());
-        if (x509Certificates != null && x509Certificates.length > 0) {
-            sb.append("\n\nFollow certificates (in PEM format) presented by the peer. Content between being/end certificate (including) can be stored in a file and imported using keytool, e.g. 'keytool -importcert -file cert.cer -alias certAlias -keystore keystore.jks'). Make sure the presented certificates are issued by your trusted CA before adding them to the keystore.\n\n");
-            for (X509Certificate cert : x509Certificates) {
-                sb.append("Subject: ").append(cert.getSubjectDN()).append("\n");
-                sb.append("Serial number: ").append(cert.getSerialNumber()).append("\n");
-                appendThumbPrint(cert, sb);
-                sb.append("\n");
-                appendCertificate(cert, sb);
-                sb.append("\n");
-            }
-        }
-        return sb.toString();
-    }
+    <!-- Context provider -->
+    <bean id="contextProvider" class="org.springframework.security.saml.context.SAMLContextProviderImpl"/>
 
-    private static void appendThumbPrint(X509Certificate x509Certificate, StringBuilder sb) {
-        sb.append("Thumbprint SHA-1: ");
-        appendThumbPrint(x509Certificate, "SHA-1", sb);
-        sb.append("\n");
-        sb.append("Thumbprint MD5: ");
-        appendThumbPrint(x509Certificate, "MD5", sb);
-        sb.append("\n");
-    }
+    <!-- Factory which disables message storage capabilities -->
+    <bean class="org.springframework.security.saml.storage.EmptyStorageFactory"/>
 
-    private static void appendThumbPrint(X509Certificate cert, String hash, StringBuilder sb) {
-        try {
-            MessageDigest md = MessageDigest.getInstance(hash);
-            byte[] der = cert.getEncoded();
-            md.update(der);
-            byte[] digest = md.digest();
-            char[] encode = Hex.encode(digest);
-            appendHexSpace(encode, sb);
-        } catch (NoSuchAlgorithmException e) {
-            sb.append ("Error calculating thumbprint: " + e.getMessage());
-        } catch (CertificateEncodingException e) {
-            sb.append("Error calculating thumbprint: " + e.getMessage());
-        }
-    }
+    <!-- Class loading incoming SAML messages from httpRequest stream -->
+    <bean id="processor" class="org.springframework.security.saml.processor.SAMLProcessorImpl" depends-on="bootstrap">
+        <constructor-arg ref="bindings"/>
+    </bean>
 
-    private static void appendHexSpace(char[] data, StringBuilder sb) {
-        for (int i = 1; i <= data.length; i++) {
-            sb.append(data[i-1]);
-            if ((i%2==0) && (i!=data.length)) {
-                sb.append(":");
-            }
-        }
-    }
+    <!-- Override default authentication processing filter with the one processing SAML messages -->
+    <bean id="samlProcessingFilter" class="org.springframework.security.saml.SAMLProcessingFilter">
+        <property name="authenticationManager" ref="authenticationManager"/>
+        <property name="filterProcessesUrl" value="/saml/SSO"/>
+    </bean>
 
-    private static void appendCertificate(X509Certificate x509Certificate, StringBuilder sb) {
-        sb.append("-----BEGIN CERTIFICATE-----\n");
-        try {
-            String certificate = new String(Base64.encode(x509Certificate.getEncoded()));
-            int i = 0;
-            while (true) {
-                int j = i + 76;
-                if (j < certificate.length()) {
-                    sb.append(certificate.substring(i, j)).append("\n");
-                    i = j;
-                } else {
-                    sb.append(certificate.substring(i)).append("\n");
-                    break;
-                }
-            }
-        } catch (CertificateEncodingException e) {
-            sb.append("Cannot encode: ").append(e.getMessage());
-        }
-        sb.append("-----END CERTIFICATE-----\n");
-    }
+    <security:authentication-manager alias="authenticationManager">
+        <security:authentication-provider ref="samlAuthenticationProvider"/>
+    </security:authentication-manager>
 
-}
+    <bean id="samlAuthenticationProvider" class="org.springframework.security.saml.SAMLAuthenticationProvider"/>
+
+    <bean id="webSSOprofileConsumer" class="org.springframework.security.saml.websso.WebSSOProfileConsumerImpl"/>
+
+    <bean id="hokWebSSOprofileConsumer" class="org.springframework.security.saml.websso.WebSSOProfileConsumerHoKImpl"/>
+
+    <bean id="samlLogger" class="org.springframework.security.saml.log.SAMLDefaultLogger"/>
+
+    <bean id="velocityEngine" class="org.springframework.security.saml.util.VelocityFactory"
+          factory-method="getEngine"/>
+
+</beans>
