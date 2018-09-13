@@ -111,7 +111,7 @@
     <dependency>
       <groupId>org.springframework.security.extensions</groupId>
       <artifactId>spring-security-saml2-core</artifactId>
-      <version>1.0.0.RC3-SNAPSHOT</version>
+      <version>1.0.4.RELEASE</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
